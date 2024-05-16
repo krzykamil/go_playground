@@ -17,7 +17,7 @@ type Config struct {
 }
 
 type Message struct {
-	data []byte
+	cmd  Command
 	peer *Peer
 }
 
@@ -61,21 +61,13 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleMessage(msg Message) error {
-	cmd, err := parseCommand(string(msg.data))
-	if err != nil {
-		return err
-	}
-	switch v := cmd.(type) {
+	switch v := msg.cmd.(type) {
 	case GetCommand:
 		val, ok := s.kv.Get(v.key)
 		if !ok {
 			return fmt.Errorf("key not found")
 		}
 		msg.peer.Send(val)
-		if err != nil {
-			slog.Error("peer send error", "err", err)
-		}
-
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
 	}
@@ -124,16 +116,20 @@ func main() {
 
 	time.Sleep(time.Second)
 
-	c := client.New("localhost:5001")
+	c, err := client.New("localhost:5001")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	for i := 0; i < 10; i++ {
+		fmt.Println("SET", fmt.Sprintf("bar_%d", i))
 		if err := c.Set(context.TODO(), fmt.Sprintf("foo_%d", i), fmt.Sprintf("bar_%d", i)); err != nil {
 			log.Fatal(err)
 		}
-		time.Sleep(time.Second)
 		val, err := c.Get(context.TODO(), fmt.Sprintf("foo_%d", i))
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("got this back", val)
+		fmt.Println("GET", val)
 	}
 }
