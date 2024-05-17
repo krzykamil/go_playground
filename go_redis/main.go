@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
+	"flag"
 	"fmt"
-	"goredis/client"
 	"log"
 	"log/slog"
 	"net"
-	"time"
 )
 
 const defaultListenAddress = ":5001"
@@ -109,27 +107,10 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func main() {
-	go func() {
-		server := NewServer(Config{})
-		log.Fatal(server.Start())
-	}()
-
-	time.Sleep(time.Second)
-
-	c, err := client.New("localhost:5001")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for i := 0; i < 10; i++ {
-		fmt.Println("SET", fmt.Sprintf("bar_%d", i))
-		if err := c.Set(context.TODO(), fmt.Sprintf("foo_%d", i), fmt.Sprintf("bar_%d", i)); err != nil {
-			log.Fatal(err)
-		}
-		val, err := c.Get(context.TODO(), fmt.Sprintf("foo_%d", i))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("GET", val)
-	}
+	listenAddr := flag.String("listenAddr", defaultListenAddress, "listen address of the goredis server")
+	flag.Parse()
+	server := NewServer(Config{
+		ListenAddress: *listenAddr,
+	})
+	log.Fatal(server.Start())
 }
